@@ -13,11 +13,10 @@ An event-organizer bot for our group, using AWS Lambda and Telegram API Webhooks
 ### Code
 Checkout code from this repo, then
 ```
-$ cp config.sample.js config.js
+$ npm install
 ```
-Open up ```config.js``` and fill in your Telegram HTTP API access token obtained in the first step then run this command:
 ```
-$ zip -r telegram-bot.zip *.js node_modules/*
+$ npm run zip
 ```
 
 ### AWS DynamoDB
@@ -26,41 +25,37 @@ We use a DynamoDB table to store data.
 Each item has a unique ID, which we use as the partition key for the table.
 
 #### To create a DynamoDB table
-1. Open the DynamoDB console at https://console.aws.amazon.com/dynamodb/.
+1. Open the [DynamoDB console](https://console.aws.amazon.com/dynamodb/).
 2. Choose Create table.
 3. For Table name, enter ```telegram-bot-events```.
 4. For Partition key, enter ```id```.
 5. Choose Create table.
 
 ### AWS Lambda
-1. Go to [AWS Lambda functions](https://us-east-1.console.aws.amazon.com/lambda/home?region=us-east-1#/functions).
+1. Go to [AWS Lambda functions](https://console.aws.amazon.com/lambda/).
 2. Click "Create function".
-3. Under the "Select blueprint" screen, search for "hello-world"and you will see the hello-world blueprint which says "A starter AWS Lambda function.".
-4. Click on "hello-world" (NOT "hello-world-python").
-5. You will be brought to the "Configure Function" page.
-6. Under "Name", you can choose any name for your function. I called it "telegram-bot".
-7. Under "Runtime", ensure it is "Node.js".
-8. Under "Code entry type", choose "Upload a .ZIP file" and click the "Upload" button" to browse for the file "telegram-bot.zip" which you have zipped previously.
-9. Under "Handler", we leave it as "index.handler".
-10. Under "Role", we choose "Basic Execution Role".
-11. You will be brought to a "Role Summary" page.
-12. Under "IAM Role", choose "lambda_basic_execution".
-13. Under "Role Name", choose "oneClick_lambda_basic_execution_.....".
-14. Click "Allow".
-15. You will be brought back to the "Configure Function" page.
-16. Leave "Memory (MB)" as "128MB".
-17. You might want to increase "Timeout" to "15" seconds.
-18. Under VPC, choose "No VPC".
-19. Click "Next".
-20. Click "Create function".
+3. Select "Author from scratch".
+4. Under "Function name", you can choose any name for your function. I called it "telegram-bot".
+5. Under "Runtime", ensure it is "Node.js 22.x".
+6. Inside "Adittional Configurations" check "Enable function URL"
+7. Under "Auth Type" select "NONE"
+8. Leave the rest as default and Click "Create function".
+9. You will be brought to the "Function" page.
+10. Go to the Configuration tab 
+11. Add the following environment variables
+     * Key: BOT_TOKEN    
+     Value: Telegram HTTP API access token obtained in the first step.
+     * Key: BOT_TABLE   
+     Value: name of the table created in the previous step.
+12. You might also want to increase "Timeout" to "15" seconds.
 
 
 ### Set Telegram Webhook
-1. Replace &lt;ACCESS_TOKEN&gt; with your Telegram HTTP API access token obtained in the first step. 
-2. Replace &lt;INVOKE_URL&gt; with your Invoke URL obtained in the previous step.
+1. Replace <ACCESS_TOKEN> with your Telegram HTTP API access token obtained in the first step. 
+2. Replace <FUNCTION_URL> with your Function URL obtained in the previous step.
 3. Run this command:
 ```
-$ curl --data "url=<INVOKE_URL>" "https://api.telegram.org/bot<ACCESS_TOKEN>/setWebhook"
+$ curl --data "url=<FUNCTION_URL>" "https://api.telegram.org/bot<ACCESS_TOKEN>/setWebhook"
 ```
 You should get back a response similar to this:
 ```
