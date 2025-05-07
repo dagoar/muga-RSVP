@@ -1,0 +1,25 @@
+{
+  "name": "muga-rsvp",
+  "version": "1.0.0",
+  "description": "Muganawa RSVP Telegram bot",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "zip": "zip -r telegram-bot.zip *.mjs .\\node_modules\\*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dagoar/muga-RSVP.git"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "rsvp"
+  ],
+  "author": "Martin Gomez",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dagoar/muga-RSVP/issues"
+  },
+  "homepage": "https://github.com/dagoar/muga-RSVP#readme"
+}
