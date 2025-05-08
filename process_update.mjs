@@ -47,8 +47,10 @@ export class ProcessUpdate {
                     this.text = 'Proximamente...';
                 } else if (this.upd.message.text.startsWith('/burlarse')) {
                     if (this.upd.message.reply_to_message && this.upd.message.reply_to_message.text) {
-                        this.text = burlarse(this.upd.message.reply_to_message.text);
+                        this.text = `<i>${burlarse(this.upd.message.reply_to_message.text)}</i>`;
                         await this.deleteMessage(this.upd.message.message_id);
+                        await this.replyMessageToTelegram(this.upd.message.reply_to_message.message_id);
+                        this.text = null;
                     }
                 }
             } else {
@@ -72,6 +74,22 @@ export class ProcessUpdate {
                 body: JSON.stringify({
                     chat_id: this.chat_id,
                     text: this.text,
+                }),
+            });
+    }
+
+    async replyMessageToTelegram(msg_id) {
+        return await fetch(`${telegramBotUrl}/sendMessage`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    chat_id: this.chat_id,
+                    text: this.text,
+                    parse_mode: 'HTML',
+                    reply_parameters: { message_id: msg_id }
                 }),
             });
     }
