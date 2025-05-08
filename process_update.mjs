@@ -14,24 +14,26 @@ export class ProcessUpdate {
             this.chat_id = upd.channel_post.chat.id;
         } else if (upd.my_chat_member) {
             this.chat_id = upd.my_chat_member.chat.id;
+        } else if (upd.edited_message) {
+            this.chat_id = upd.edited_message.chat.id;
         }
 
         if (!this.chat_id) {
-            sendMessageToDebug(JSON.stringify(upd));
-            return context.succeed();
-        };
+            this.sendMessageToDebug(JSON.stringify(upd));
+        }
 
         this.upd = upd;
 
         if (upd.channel_post && upd.channel_post.text) {
             this.text = `answer to '${upd.channel_post.text}'`;
         } else if (upd.my_chat_member) {
-            this.text = `Bienvenido ${upd.my_chat_member.from.username}`;
+            this.text = `Bienvenid@ ${upd.my_chat_member.from.username}`;
         } else if (upd.message && upd.message.new_chat_member) {
-            this.text = `Bienvenido ${upd.message.new_chat_member.username}`;
+            this.text = `Bienvenid@ ${upd.message.new_chat_member.username}`;
         } else if (upd.message && upd.message.left_chat_member) {
             this.text = `Adiós ${upd.message.left_chat_member.username}`;
         }
+        
     }
 
     async doProcess(context) {

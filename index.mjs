@@ -7,7 +7,7 @@ export const handler = async (event, context) => {
 
     let proc = new ProcessUpdate(update);
 
-    if (!proc) {
+    if (!proc.chat_id) {
         return context.succeed();
     }
 
