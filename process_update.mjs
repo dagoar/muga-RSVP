@@ -1,6 +1,6 @@
 const telegramBotUrl = `https://api.telegram.org/bot${process.env.BOT_TOKEN}`;
 
-const DEBUG_CHAT = 61677024; // Id of my own chat with the bot
+const DEBUG_CHAT_ID = 61677024; // Id of my own chat with the bot
 
 export class ProcessUpdate {
     chat_id;
@@ -16,6 +16,8 @@ export class ProcessUpdate {
             this.chat_id = upd.my_chat_member.chat.id;
         } else if (upd.edited_message) {
             this.chat_id = upd.edited_message.chat.id;
+        } else if (upd.callback_query) {
+            this.chat_id = upd.callback_query.message.chat.id;
         }
 
         if (!this.chat_id) {
@@ -33,80 +35,111 @@ export class ProcessUpdate {
         } else if (upd.message && upd.message.left_chat_member) {
             this.text = `Adiós ${upd.message.left_chat_member.username}`;
         }
-        
+
     }
 
     async doProcess(context) {
-        if (this.upd.message) {
+        if (this.upd.callback_query) {
+            if (this.upd.callback_query.data == 'voy') {
+                this.text = `viene ${this.upd.callback_query.from.username}`;
+            } else if (this.upd.callback_query.data == 'masuno') {
+                this.text = `${this.upd.callback_query.from.username} trae a alguien más`;
+            } else if (this.upd.callback_query.data == 'novoy') {
+                this.text = `${this.upd.callback_query.from.username} dió una excusa genérica`;
+            }
+            await this.answerCallbackQuery(this.upd.callback_query.id);
+        } else if (this.upd.edited_message) {
+            console.log('edited_message', this.upd);
+            //this.text = `editado ${this.upd.edited_message.text}`;
+        } else if (this.upd.message) {
             if (this.upd.message.text) {
                 if (this.upd.message.text.startsWith('/start')) {
                     this.text = 'Hola, soy le planner de Muganawa';
                 } else if (this.upd.message.text.startsWith('/help')) {
-                    this.text = 'Escribe algo y yo te responderé';
+                    this.text = 'preguntale a @UnNegroFeo';
                 } else if (this.upd.message.text.startsWith('/evento')) {
-                    this.text = 'Proximamente...';
+                    if (this.upd.message.reply_to_message && this.upd.message.reply_to_message.text) {
+                        await this.deleteMessage(this.upd.message.message_id);
+                        await this.createEvent(this.upd.message.reply_to_message.text);
+                    }
                 } else if (this.upd.message.text.startsWith('/burlarse')) {
                     if (this.upd.message.reply_to_message && this.upd.message.reply_to_message.text) {
                         this.text = `<i>${burlarse(this.upd.message.reply_to_message.text)}</i>`;
                         await this.deleteMessage(this.upd.message.message_id);
-                        await this.replyMessageToTelegram(this.upd.message.reply_to_message.message_id);
+                        await this.replyMessage(this.upd.message.reply_to_message.message_id);
                         this.text = null;
                     }
                 }
-            } else {
+            }
+        } else {
+            console.log('debug', this.upd);
+            if (DEBUG_CHAT_ID) {
                 await this.sendMessageToDebug(JSON.stringify(this.upd));
             }
         }
 
         if (this.text) {
-            await this.sendMessageToTelegram();
+            await this.sendMessage();
         }
         return context.succeed();
     }
 
-    async sendMessageToTelegram() {
-        return await fetch(`${telegramBotUrl}/sendMessage`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    chat_id: this.chat_id,
-                    text: this.text,
-                }),
-            });
+    async createEvent(event_text) {
+        const event = {
+            "chat_id": this.chat_id,
+            "text": event_text,
+            "reply_markup": {
+                "inline_keyboard": [
+                    [
+                        {
+                            "text": "Voy!",
+                            "callback_data": "voy"
+                        },
+                        {
+                            "text": "+1",
+                            "callback_data": "masuno"
+                        },
+                        {
+                            "text": "Excusa genérica",
+                            "callback_data": "novoy"
+                        }
+                    ]
+                ]
+            }
+        };
+
+        return await sendMessageToTelegram(event);
     }
 
-    async replyMessageToTelegram(msg_id) {
-        return await fetch(`${telegramBotUrl}/sendMessage`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    chat_id: this.chat_id,
-                    text: this.text,
-                    parse_mode: 'HTML',
-                    reply_parameters: { message_id: msg_id }
-                }),
-            });
+    async sendMessage() {
+        const mensaje = {
+            chat_id: this.chat_id,
+            text: this.text,
+        }
+
+        return await sendMessageToTelegram(mensaje);
+    }
+
+    async replyMessage(msg_id) {
+        const mensaje = {
+            chat_id: this.chat_id,
+            text: this.text,
+            parse_mode: 'HTML',
+            reply_parameters: { message_id: msg_id }
+        }
+
+        return await sendMessageToTelegram(mensaje);
     }
 
     async sendMessageToDebug(msg) {
-        return await fetch(`${telegramBotUrl}/sendMessage`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    chat_id: DEBUG_CHAT,
-                    text: msg,
-                }),
-            });
-
+        if (!msg) {
+            msg = JSON.stringify(this.upd);
+        }
+        const mensaje = {
+            chat_id: DEBUG_CHAT_ID,
+            text: msg,
+        }
+        return await sendMessageToTelegram(mensaje);
     }
 
     async deleteMessage(msg_id) {
@@ -123,6 +156,31 @@ export class ProcessUpdate {
             });
     }
 
+    async answerCallbackQuery(id) {
+        return await fetch(`${telegramBotUrl}/answerCallbackQuery`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    callback_query_id: id,
+                    show_alert: true,
+                }),
+            });
+    }
+
+}
+
+async function sendMessageToTelegram(msg) {
+    return await fetch(`${telegramBotUrl}/sendMessage`,
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(msg),
+        });
 }
 
 function burlarse(string) {
