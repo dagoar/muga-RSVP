@@ -1,31 +1,16 @@
-const telegramBotUrl = `https://api.telegram.org/bot${process.env.BOT_TOKEN}`;
+import { ProcessUpdate } from "./process_update.mjs";
 
-async function sendMessageToTelegram(chatId, message) {
-    return await fetch(`${telegramBotUrl}/sendMessage`,
-        {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                chat_id: chatId,
-                text: message,
-            }),
-        });
-}
-
-export const handler = async(event, context) => {
+export const handler = async (event, context) => {
     // Message
     let update = JSON.parse(event.body);
+    // console.log("update", update);
 
-    console.log("update", update);
+    let proc = new ProcessUpdate(update);
 
-    console.log("mensaje", update.message.text);
-  
-    console.log("chat_id", update.message.chat.id);
+    if (!proc) {
+        return context.succeed();
+    }
 
+    return proc.doProcess(context);
 
-    await sendMessageToTelegram(update.message.chat.id, `you said "${update.message.text}"`);
-    return context.succeed();
-
-};
+}

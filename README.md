@@ -48,7 +48,7 @@ Each item has a unique ID, which we use as the partition key for the table.
      * Key: BOT_TABLE   
      Value: name of the table created in the previous step.
 12. You might also want to increase "Timeout" to "15" seconds.
-
+13. Go back to the Code tab and click "Upload From", then submit the .zip generated in the "Code" step.
 
 ### Set Telegram Webhook
 1. Replace <ACCESS_TOKEN> with your Telegram HTTP API access token obtained in the first step. 
