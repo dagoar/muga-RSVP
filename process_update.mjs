@@ -48,6 +48,7 @@ export class ProcessUpdate {
                 this.text = `${this.upd.callback_query.from.username} dió una excusa genérica`;
             }
             await this.answerCallbackQuery(this.upd.callback_query.id);
+            this.text = null;
         } else if (this.upd.edited_message) {
             console.log('edited_message', this.upd);
             //this.text = `editado ${this.upd.edited_message.text}`;
@@ -85,6 +86,7 @@ export class ProcessUpdate {
     }
 
     async createEvent(event_text) {
+        console.log('createEvent', event_text);
         const event = {
             "chat_id": this.chat_id,
             "text": event_text,
@@ -92,15 +94,16 @@ export class ProcessUpdate {
                 "inline_keyboard": [
                     [
                         {
-                            "text": "Voy!",
+                            "text": "✅ Voy!",
                             "callback_data": "voy"
                         },
                         {
-                            "text": "+1",
+                            "text": "➕ Voy +1!",
                             "callback_data": "masuno"
-                        },
+                        }],
+                    [
                         {
-                            "text": "Excusa genérica",
+                            "text": "🚫 Excusa genérica",
                             "callback_data": "novoy"
                         }
                     ]
@@ -108,7 +111,13 @@ export class ProcessUpdate {
             }
         };
 
-        return await sendMessageToTelegram(event);
+        const response = await sendMessageToTelegram(event);
+        const data = await response.json();
+        console.log('response', data);
+        if (data.ok && data.result) {
+                return await this.pinMessage(data.result.message_id);
+        }
+        return;
     }
 
     async sendMessage() {
@@ -129,6 +138,21 @@ export class ProcessUpdate {
         }
 
         return await sendMessageToTelegram(mensaje);
+    }
+
+    async pinMessage(msg_id) {
+        return await fetch(`${telegramBotUrl}/pinChatMessage`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    chat_id: this.chat_id,
+                    message_id: msg_id,
+                    disable_notification: true,
+                }),
+            });
     }
 
     async sendMessageToDebug(msg) {
