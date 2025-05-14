@@ -1,3 +1,5 @@
+import { DB } from './database.mjs';
+
 const telegramBotUrl = `https://api.telegram.org/bot${process.env.BOT_TOKEN}`;
 
 const DEBUG_CHAT_ID = 61677024; // Id of my own chat with the bot
@@ -6,8 +8,11 @@ export class ProcessUpdate {
     chat_id;
     text;
     upd;
+    config;
 
     constructor(upd) {
+        DB.get('config').then( (value) => {this.config = value} );
+
         if (upd.message && upd.message.chat && upd.message.chat.id) {
             this.chat_id = upd.message.chat.id;
         } else if (upd.channel_post && upd.channel_post.chat && upd.channel_post.chat.id) {
