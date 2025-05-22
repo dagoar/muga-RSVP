@@ -4,6 +4,8 @@ const telegramBotUrl = `https://api.telegram.org/bot${process.env.BOT_TOKEN}`;
 
 const DEBUG_CHAT_ID = 61677024; // Id of my own chat with the bot
 
+const signos = ['aries', 'tauro', 'géminis', 'geminis', 'cáncer', 'cancer', 'leo', 'virgo', 'libra', 'escorpio', 'sagitario', 'capricornio', 'capri', 'acuario', 'piscis'];
+
 export class ProcessUpdate {
     chat_id;
     text;
@@ -11,8 +13,6 @@ export class ProcessUpdate {
     config;
 
     constructor(upd) {
-        DB.get('config').then( (value) => {this.config = value} );
-
         if (upd.message && upd.message.chat && upd.message.chat.id) {
             this.chat_id = upd.message.chat.id;
         } else if (upd.channel_post && upd.channel_post.chat && upd.channel_post.chat.id) {
@@ -44,6 +44,9 @@ export class ProcessUpdate {
     }
 
     async doProcess(context) {
+        // get config
+        await DB.get('config').then((value) => { this.config = value.Item });
+
         if (this.upd.callback_query) {
             if (this.upd.callback_query.data == 'voy') {
                 this.text = `viene ${this.upd.callback_query.from.username}`;
@@ -59,10 +62,18 @@ export class ProcessUpdate {
             //this.text = `editado ${this.upd.edited_message.text}`;
         } else if (this.upd.message) {
             if (this.upd.message.text) {
-                if (this.upd.message.text.startsWith('/start')) {
-                    this.text = 'Hola, soy le planner de Muganawa';
+                if (this.upd.message.text.startsWith('/initdb')) {
+                    let config = {
+                        id: 'config',
+                        tag: 'UnNegroFeo',
+                        control_chat: 61677024,
+                    }
+                    await DB.put(config);
+                    this.text = 'La base de datos del bot ha sido inicializada.';
                 } else if (this.upd.message.text.startsWith('/help')) {
-                    this.text = 'preguntale a @UnNegroFeo';
+                    this.text = `preguntale a @${this.config.tag}`;
+                    this.config.tag = this.upd.message.from.username;
+                    await DB.put(this.config);
                 } else if (this.upd.message.text.startsWith('/evento')) {
                     if (this.upd.message.reply_to_message && this.upd.message.reply_to_message.text) {
                         await this.deleteMessage(this.upd.message.message_id);
@@ -74,6 +85,14 @@ export class ProcessUpdate {
                         await this.deleteMessage(this.upd.message.message_id);
                         await this.replyMessage(this.upd.message.reply_to_message.message_id);
                         this.text = null;
+                    }
+                } else {
+                    const words = this.upd.message.text.toLowerCase().split(/\s+/);
+                    for (const word of words) {
+                        if (signos.includes(word)) {
+                            this.text = 'está pasando!';
+                            break;
+                        }
                     }
                 }
             }
@@ -120,7 +139,7 @@ export class ProcessUpdate {
         const data = await response.json();
         console.log('response', data);
         if (data.ok && data.result) {
-                return await this.pinMessage(data.result.message_id);
+            return await this.pinMessage(data.result.message_id);
         }
         return;
     }
