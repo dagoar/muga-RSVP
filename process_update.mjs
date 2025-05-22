@@ -61,7 +61,7 @@ export class ProcessUpdate {
                 } else if (this.upd.message.text.startsWith('/evento')) {
                     if (this.upd.message.reply_to_message && this.upd.message.reply_to_message.text) {
                         await this.deleteMessage(this.upd.message.message_id);
-                        await this.createEvent(this.upd.message.reply_to_message.text);
+                        await this.createEvent(this.upd.message.reply_to_message.text, this.upd.message.reply_to_message.entities);
                     }
                 } else if (this.upd.message.text.startsWith('/burlarse')) {
                     if (this.upd.message.reply_to_message && this.upd.message.reply_to_message.text) {
@@ -70,7 +70,28 @@ export class ProcessUpdate {
                         await this.replyMessage(this.upd.message.reply_to_message.message_id);
                         this.text = null;
                     }
-                }
+                } else if (this.upd.message.text.startsWith('/massa')) {
+                    if (this.upd.message.reply_to_message && this.upd.message.reply_to_message.text) {
+                        this.text = `<b>POR SI O POR NO JAVIER</b>`;
+                        await this.deleteMessage(this.upd.message.message_id);
+                        await this.replyMessage(this.upd.message.reply_to_message.message_id);
+                        this.text = null;
+                    }
+                } else if (this.upd.message.text.startsWith('/bardear')) {
+                    if (this.upd.message.reply_to_message && this.upd.message.reply_to_message.text) {
+                        this.text = `<b>por eso te gorrean</b>`;
+                        await this.deleteMessage(this.upd.message.message_id);
+                        await this.replyMessage(this.upd.message.reply_to_message.message_id);
+                        this.text = null;
+                    }
+                } else if (this.upd.message.text.startsWith('/piscis')) {
+                    if (this.upd.message.reply_to_message && this.upd.message.reply_to_message.text) {
+                        this.text = `Che, disculpen... Chicos, bajen la música. Bajen la música. ¿Hay alguno de Sagitario acá? Pará un poco amor, no pasa nada... estoy preguntando, no pasa nada. ¿Cuál es el problema? ¿Vos sos de Sagitario? Qué increíble, ya está pasando. ¿Vos también? Esa mano bien arriba entonces si sos de Sagitario. ¿Alguno más de Sagitario? ¿No? ¿Solamente dos? Bueno, es un montón igual. Mirá, dos más acá de Sagitario también que hay. O sea que ya son... Gachi, Pachi, ella, el novio, el ex-novio... yo, y estos dos pelotudos, todos de Sagitario. Está lleno de Sagitario, muy impresionante, de verdad, muy groso. ¿Querés que te diga también qué día nací yo? Porque por ahí también coincidimos con tu novio... y te digo que nos caemos de orto todos. Toda la fiesta, nos caemos de orto.`;
+                        await this.deleteMessage(this.upd.message.message_id);
+                        await this.replyMessage(this.upd.message.reply_to_message.message_id);
+                        this.text = null;
+                    }
+                }                
             }
         } else {
             console.log('debug', this.upd);
@@ -85,11 +106,12 @@ export class ProcessUpdate {
         return context.succeed();
     }
 
-    async createEvent(event_text) {
+    async createEvent(event_text, text_entities) {
         console.log('createEvent', event_text);
         const event = {
             "chat_id": this.chat_id,
             "text": event_text,
+            "entities": text_entities ? text_entities : [],
             "reply_markup": {
                 "inline_keyboard": [
                     [
