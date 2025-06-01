@@ -2,9 +2,9 @@ import { DB } from './database.mjs';
 
 const telegramBotUrl = `https://api.telegram.org/bot${process.env.BOT_TOKEN}`;
 
-const DEBUG_CHAT_ID = 61677024; // Id of my own chat with the bot
+const DEBUG_CHAT_ID = process.env.DEBUG_CHAT_ID; // Id of my own chat with the bot
 
-const signos = ['aries', 'tauro', 'géminis', 'geminis', 'cáncer', 'cancer', 'leo', 'virgo', 'libra', 'escorpio', 'sagitario', 'capricornio', 'capri', 'acuario', 'piscis'];
+const signos = ['aries', 'tauro', 'géminis', 'geminis', 'cáncer', 'cancer', 'leo', 'virgo', 'libra', 'escorpio', 'sagitario', 'capricornio', 'acuario', 'piscis', 'ofiuco'];
 
 export class ProcessUpdate {
     chat_id;
@@ -48,15 +48,38 @@ export class ProcessUpdate {
         await DB.get('config').then((value) => { this.config = value.Item });
 
         if (this.upd.callback_query) {
-            if (this.upd.callback_query.data == 'voy') {
-                this.text = `viene ${this.upd.callback_query.from.username}`;
-            } else if (this.upd.callback_query.data == 'masuno') {
-                this.text = `${this.upd.callback_query.from.username} trae a alguien más`;
-            } else if (this.upd.callback_query.data == 'novoy') {
-                this.text = `${this.upd.callback_query.from.username} dió una excusa genérica`;
+            let evento;
+            await DB.get(this.upd.callback_query.message.message_id).then((value) => { evento = value.Item; });
+            if (!evento) {
+                this.text = `No hay evento para ${this.upd.callback_query.message.message_id}`;
+            } else {
+                if (this.upd.callback_query.data == 'voy') {
+                    if (evento.asisten.includes(this.upd.callback_query.from.username)) {
+                        this.text = `${this.upd.callback_query.from.username} ya está en la lista`;
+                    } else {
+                        evento.asisten.push(this.upd.callback_query.from.username);
+                        await DB.put(evento);
+                    }
+                } else if (this.upd.callback_query.data == 'masuno') {
+                    if (evento.asisten.includes(this.upd.callback_query.from.username)) {
+                        evento.asisten.push(`Acompañante de ${this.upd.callback_query.from.username}`);
+                    } else {
+                        evento.asisten.push(this.upd.callback_query.from.username);
+                        evento.asisten.push(`Acompañante de ${this.upd.callback_query.from.username}`);
+                    }
+                    await DB.put(evento);
+                } else if (this.upd.callback_query.data == 'novoy') {
+                    if (evento.asisten.includes(this.upd.callback_query.from.username)) {
+                        // remove from list
+                        evento.asisten.splice(evento.asisten.indexOf(this.upd.callback_query.from.username), 1);
+                        await DB.put(evento);
+                    }
+                }
+                await this.answerCallbackQuery(this.upd.callback_query.id);
+                // edit message
+                await editMessage(evento);
+                this.text = null;
             }
-            await this.answerCallbackQuery(this.upd.callback_query.id);
-            this.text = null;
         } else if (this.upd.edited_message) {
             console.log('edited_message', this.upd);
             //this.text = `editado ${this.upd.edited_message.text}`;
@@ -66,7 +89,6 @@ export class ProcessUpdate {
                     let config = {
                         id: 'config',
                         tag: 'UnNegroFeo',
-                        control_chat: 61677024,
                     }
                     await DB.put(config);
                     this.text = 'La base de datos del bot ha sido inicializada.';
@@ -75,9 +97,10 @@ export class ProcessUpdate {
                     this.config.tag = this.upd.message.from.username;
                     await DB.put(this.config);
                 } else if (this.upd.message.text.startsWith('/evento')) {
+                    this.sendMessageToDebug(this.upd.message.reply_to_message);
                     if (this.upd.message.reply_to_message && this.upd.message.reply_to_message.text) {
                         await this.deleteMessage(this.upd.message.message_id);
-                        await this.createEvent(this.upd.message.reply_to_message.text);
+                        await this.createEvent(this.upd.message.reply_to_message);
                     }
                 } else if (this.upd.message.text.startsWith('/burlarse')) {
                     if (this.upd.message.reply_to_message && this.upd.message.reply_to_message.text) {
@@ -95,6 +118,7 @@ export class ProcessUpdate {
                         }
                     }
                 }
+
             }
         } else {
             console.log('debug', this.upd);
@@ -109,11 +133,13 @@ export class ProcessUpdate {
         return context.succeed();
     }
 
-    async createEvent(event_text) {
-        console.log('createEvent', event_text);
+    async createEvent(event_message) {
+        console.log('createEvent', event_message);
         const event = {
             "chat_id": this.chat_id,
-            "text": event_text,
+            "text": event_message.text,
+            "entities": event_message.entities ? event_message.entities : null,
+            "photo": event_message.photo ? event_message.photo : null,
             "reply_markup": {
                 "inline_keyboard": [
                     [
@@ -139,9 +165,39 @@ export class ProcessUpdate {
         const data = await response.json();
         console.log('response', data);
         if (data.ok && data.result) {
+            await DB.put({
+                id: data.result.message_id,
+                chat_id: this.chat_id,
+                text: event.text,
+                entities: event.entities,
+                photo: event.photo,
+                reply_markup: event.reply_markup,
+                asisten: [],
+            });
             return await this.pinMessage(data.result.message_id);
         }
         return;
+    }
+
+    async editMessage(evento) {
+        let texto_editado = evento.text + '\n' + evento.asisten.length + '\n' + evento.asisten.join(', ');
+        const event = {
+            "chat_id": this.chat_id,
+            "message_id": evento.id,
+            "text": texto_editado,
+            "entities": evento.entities ? evento.entities : null,
+            "photo": evento.photo ? evento.photo : null,
+            "reply_markup": evento.reply_markup,
+        };
+
+        return await fetch(`${telegramBotUrl}/editMessageText`,
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(event),
+        });
     }
 
     async sendMessage() {
