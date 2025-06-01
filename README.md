@@ -47,6 +47,8 @@ Each item has a unique ID, which we use as the partition key for the table.
      Value: Telegram HTTP API access token obtained in the first step.
      * Key: BOT_TABLE   
      Value: name of the table created in the previous step.
+     * Key: DEBUG_CHAT_ID
+     Value: Id of your private chat with the bot, so it can report things that doesn't understand
 12. You might also want to increase "Timeout" to "15" seconds.
 13. Go back to the Code tab and click "Upload From", then submit the .zip generated in the "Code" step.
 
