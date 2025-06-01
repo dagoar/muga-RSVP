@@ -1,11 +1,16 @@
+import { DB } from './database.mjs';
+
 const telegramBotUrl = `https://api.telegram.org/bot${process.env.BOT_TOKEN}`;
 
-const DEBUG_CHAT_ID = 61677024; // Id of my own chat with the bot
+const DEBUG_CHAT_ID = process.env.DEBUG_CHAT_ID; // Id of my own chat with the bot
+
+const signos = ['aries', 'tauro', 'géminis', 'geminis', 'cáncer', 'cancer', 'leo', 'virgo', 'libra', 'escorpio', 'sagitario', 'capricornio', 'acuario', 'piscis', 'ofiuco'];
 
 export class ProcessUpdate {
     chat_id;
     text;
     upd;
+    config;
 
     constructor(upd) {
         if (upd.message && upd.message.chat && upd.message.chat.id) {
@@ -39,29 +44,65 @@ export class ProcessUpdate {
     }
 
     async doProcess(context) {
+        // get config
+        await DB.get('config').then((value) => { this.config = value.Item });
+
         if (this.upd.callback_query) {
-            if (this.upd.callback_query.data == 'voy') {
-                this.text = `viene ${this.upd.callback_query.from.username}`;
-            } else if (this.upd.callback_query.data == 'masuno') {
-                this.text = `${this.upd.callback_query.from.username} trae a alguien más`;
-            } else if (this.upd.callback_query.data == 'novoy') {
-                this.text = `${this.upd.callback_query.from.username} dió una excusa genérica`;
+            let evento;
+            await DB.get(this.upd.callback_query.message.message_id.toString()).then((value) => { evento = value.Item; });
+            if (!evento) {
+                this.text = `No hay evento para ${this.upd.callback_query.message.message_id}`;
+            } else {
+                if (this.upd.callback_query.data == 'voy') {
+                    if (evento.asisten.includes(this.upd.callback_query.from.username)) {
+                        this.text = `${this.upd.callback_query.from.username} ya está en la lista`;
+                    } else {
+                        evento.asisten.push(this.upd.callback_query.from.username);
+                        await DB.put(evento);
+                    }
+                } else if (this.upd.callback_query.data == 'masuno') {
+                    if (evento.asisten.includes(this.upd.callback_query.from.username)) {
+                        evento.asisten.push(`Acompañante de ${this.upd.callback_query.from.username}`);
+                    } else {
+                        evento.asisten.push(this.upd.callback_query.from.username);
+                        evento.asisten.push(`Acompañante de ${this.upd.callback_query.from.username}`);
+                    }
+                    await DB.put(evento);
+                } else if (this.upd.callback_query.data == 'novoy') {
+                    if (evento.asisten.includes(this.upd.callback_query.from.username)) {
+                        // remove from list
+                        evento.asisten.splice(evento.asisten.indexOf(this.upd.callback_query.from.username), 1);
+                        if (evento.asisten.includes(`Acompañante de ${this.upd.callback_query.from.username}`)) {
+                            evento.asisten.splice(evento.asisten.indexOf(`Acompañante de ${this.upd.callback_query.from.username}`), 1);
+                        }
+                        await DB.put(evento);
+                    }
+                }
+                await this.answerCallbackQuery(this.upd.callback_query.id);
+                // edit message
+                await this.editMessage(evento);
+                this.text = null;
             }
-            await this.answerCallbackQuery(this.upd.callback_query.id);
-            this.text = null;
         } else if (this.upd.edited_message) {
             console.log('edited_message', this.upd);
             //this.text = `editado ${this.upd.edited_message.text}`;
         } else if (this.upd.message) {
             if (this.upd.message.text) {
-                if (this.upd.message.text.startsWith('/start')) {
-                    this.text = 'Hola, soy le planner de Muganawa';
+                if (this.upd.message.text.startsWith('/initdb')) {
+                    let config = {
+                        id: 'config',
+                        tag: 'UnNegroFeo',
+                    }
+                    await DB.put(config);
+                    this.text = 'La base de datos del bot ha sido inicializada.';
                 } else if (this.upd.message.text.startsWith('/help')) {
-                    this.text = 'preguntale a @UnNegroFeo';
+                    this.text = `preguntale a @${this.config.tag}`;
+                    this.config.tag = this.upd.message.from.username;
+                    await DB.put(this.config);
                 } else if (this.upd.message.text.startsWith('/evento')) {
                     if (this.upd.message.reply_to_message && this.upd.message.reply_to_message.text) {
                         await this.deleteMessage(this.upd.message.message_id);
-                        await this.createEvent(this.upd.message.reply_to_message.text, this.upd.message.reply_to_message.entities);
+                        await this.createEvent(this.upd.message.reply_to_message);
                     }
                 } else if (this.upd.message.text.startsWith('/burlarse')) {
                     if (this.upd.message.reply_to_message && this.upd.message.reply_to_message.text) {
@@ -70,28 +111,16 @@ export class ProcessUpdate {
                         await this.replyMessage(this.upd.message.reply_to_message.message_id);
                         this.text = null;
                     }
-                } else if (this.upd.message.text.startsWith('/massa')) {
-                    if (this.upd.message.reply_to_message && this.upd.message.reply_to_message.text) {
-                        this.text = `<b>POR SI O POR NO JAVIER</b>`;
-                        await this.deleteMessage(this.upd.message.message_id);
-                        await this.replyMessage(this.upd.message.reply_to_message.message_id);
-                        this.text = null;
+                } else {
+                    const words = this.upd.message.text.toLowerCase().split(/\s+/);
+                    for (const word of words) {
+                        if (signos.includes(word)) {
+                            this.text = 'está pasando!';
+                            break;
+                        }
                     }
-                } else if (this.upd.message.text.startsWith('/bardear')) {
-                    if (this.upd.message.reply_to_message && this.upd.message.reply_to_message.text) {
-                        this.text = `<b>por eso te gorrean</b>`;
-                        await this.deleteMessage(this.upd.message.message_id);
-                        await this.replyMessage(this.upd.message.reply_to_message.message_id);
-                        this.text = null;
-                    }
-                } else if (this.upd.message.text.startsWith('/piscis')) {
-                    if (this.upd.message.reply_to_message && this.upd.message.reply_to_message.text) {
-                        this.text = `Che, disculpen... Chicos, bajen la música. Bajen la música. ¿Hay alguno de Sagitario acá? Pará un poco amor, no pasa nada... estoy preguntando, no pasa nada. ¿Cuál es el problema? ¿Vos sos de Sagitario? Qué increíble, ya está pasando. ¿Vos también? Esa mano bien arriba entonces si sos de Sagitario. ¿Alguno más de Sagitario? ¿No? ¿Solamente dos? Bueno, es un montón igual. Mirá, dos más acá de Sagitario también que hay. O sea que ya son... Gachi, Pachi, ella, el novio, el ex-novio... yo, y estos dos pelotudos, todos de Sagitario. Está lleno de Sagitario, muy impresionante, de verdad, muy groso. ¿Querés que te diga también qué día nací yo? Porque por ahí también coincidimos con tu novio... y te digo que nos caemos de orto todos. Toda la fiesta, nos caemos de orto.`;
-                        await this.deleteMessage(this.upd.message.message_id);
-                        await this.replyMessage(this.upd.message.reply_to_message.message_id);
-                        this.text = null;
-                    }
-                }                
+                }
+
             }
         } else {
             console.log('debug', this.upd);
@@ -106,12 +135,13 @@ export class ProcessUpdate {
         return context.succeed();
     }
 
-    async createEvent(event_text, text_entities) {
-        console.log('createEvent', event_text);
+    async createEvent(event_message) {
+        console.log('createEvent', event_message);
         const event = {
             "chat_id": this.chat_id,
-            "text": event_text,
-            "entities": text_entities ? text_entities : [],
+            "text": event_message.text,
+            "entities": event_message.entities ? event_message.entities : null,
+            "photo": event_message.photo ? event_message.photo : null,
             "reply_markup": {
                 "inline_keyboard": [
                     [
@@ -137,9 +167,39 @@ export class ProcessUpdate {
         const data = await response.json();
         console.log('response', data);
         if (data.ok && data.result) {
-                return await this.pinMessage(data.result.message_id);
+            await DB.put({
+                id: data.result.message_id.toString(),
+                chat_id: this.chat_id,
+                text: event.text,
+                entities: event.entities,
+                photo: event.photo,
+                reply_markup: event.reply_markup,
+                asisten: [],
+            });
+            return await this.pinMessage(data.result.message_id);
         }
         return;
+    }
+
+    async editMessage(evento) {
+        let texto_editado = evento.text + '\nAsisten: ' + evento.asisten.length + '\n' + evento.asisten.join(', ');
+        const event = {
+            "chat_id": this.chat_id,
+            "message_id": evento.id,
+            "text": texto_editado,
+            "entities": evento.entities ? evento.entities : null,
+            "photo": evento.photo ? evento.photo : null,
+            "reply_markup": evento.reply_markup,
+        };
+
+        return await fetch(`${telegramBotUrl}/editMessageText`,
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(event),
+        });
     }
 
     async sendMessage() {
