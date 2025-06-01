@@ -49,7 +49,7 @@ export class ProcessUpdate {
 
         if (this.upd.callback_query) {
             let evento;
-            await DB.get(this.upd.callback_query.message.message_id).then((value) => { evento = value.Item; });
+            await DB.get(this.upd.callback_query.message.message_id.toString()).then((value) => { evento = value.Item; });
             if (!evento) {
                 this.text = `No hay evento para ${this.upd.callback_query.message.message_id}`;
             } else {
@@ -72,12 +72,15 @@ export class ProcessUpdate {
                     if (evento.asisten.includes(this.upd.callback_query.from.username)) {
                         // remove from list
                         evento.asisten.splice(evento.asisten.indexOf(this.upd.callback_query.from.username), 1);
+                        if (evento.asisten.includes(`Acompañante de ${this.upd.callback_query.from.username}`)) {
+                            evento.asisten.splice(evento.asisten.indexOf(`Acompañante de ${this.upd.callback_query.from.username}`), 1);
+                        }
                         await DB.put(evento);
                     }
                 }
                 await this.answerCallbackQuery(this.upd.callback_query.id);
                 // edit message
-                await editMessage(evento);
+                await this.editMessage(evento);
                 this.text = null;
             }
         } else if (this.upd.edited_message) {
@@ -97,7 +100,6 @@ export class ProcessUpdate {
                     this.config.tag = this.upd.message.from.username;
                     await DB.put(this.config);
                 } else if (this.upd.message.text.startsWith('/evento')) {
-                    this.sendMessageToDebug(this.upd.message.reply_to_message);
                     if (this.upd.message.reply_to_message && this.upd.message.reply_to_message.text) {
                         await this.deleteMessage(this.upd.message.message_id);
                         await this.createEvent(this.upd.message.reply_to_message);
@@ -166,7 +168,7 @@ export class ProcessUpdate {
         console.log('response', data);
         if (data.ok && data.result) {
             await DB.put({
-                id: data.result.message_id,
+                id: data.result.message_id.toString(),
                 chat_id: this.chat_id,
                 text: event.text,
                 entities: event.entities,
@@ -180,7 +182,7 @@ export class ProcessUpdate {
     }
 
     async editMessage(evento) {
-        let texto_editado = evento.text + '\n' + evento.asisten.length + '\n' + evento.asisten.join(', ');
+        let texto_editado = evento.text + '\nAsisten: ' + evento.asisten.length + '\n' + evento.asisten.join(', ');
         const event = {
             "chat_id": this.chat_id,
             "message_id": evento.id,
