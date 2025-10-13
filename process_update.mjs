@@ -34,9 +34,9 @@ export class ProcessUpdate {
         if (upd.channel_post && upd.channel_post.text) {
             this.text = `answer to '${upd.channel_post.text}'`;
         } else if (upd.my_chat_member) {
-            this.text = `Bienvenid@ ${upd.my_chat_member.from.username}`;
+            this.text = `Bienvenid@ @${upd.my_chat_member.from.username}`;
         } else if (upd.message && upd.message.new_chat_member) {
-            this.text = `Bienvenid@ ${upd.message.new_chat_member.username}`;
+            this.text = `Bienvenidx @${upd.message.new_chat_member.username}`;
         } else if (upd.message && upd.message.left_chat_member) {
             this.text = `Adiós ${upd.message.left_chat_member.username}`;
         }
