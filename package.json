@@ -5,7 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "zip": "zip -r telegram-bot.zip *.mjs .\\node_modules\\*"
+    "zip": "zip -r telegram-bot.zip *.mjs .\\node_modules\\*",
+    "deploy": "aws lambda update-function-code --function-name lasecretaria-bot --zip-file fileb://telegram-bot.zip"
   },
   "repository": {
     "type": "git",
@@ -23,6 +24,6 @@
   },
   "homepage": "https://github.com/dagoar/muga-RSVP#readme",
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.804.0"
+    "@aws-sdk/client-dynamodb": "^3.908.0"
   }
 }
